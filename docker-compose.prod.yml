@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    env_file: ./back/.env.db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  backend:
+    build: ./back
+    restart: always
+    env_file: ./back/.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  frontend:
+    build: ./front
+    volumes:
+      - static:/front/build
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  nginx:
+    volumes:
+      - static:/usr/share/nginx/html # 💡
+      - ./webserver/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./webserver/nginx/cond.13lab.tech.conf:/etc/nginx/sites-enabled/cond.13lab.tech.conf # ⚠️
+      - ./webserver/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./webserver/certbot/conf:/etc/letsencrypt
+      - ./webserver/certbot/www:/var/www/certbot
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - backend
+      - frontend # 💡
+
+volumes:
+  static:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
